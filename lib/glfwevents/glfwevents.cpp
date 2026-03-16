@@ -1,16 +1,44 @@
 #include "glfwevents.hpp"
 #include <GLFW/glfw3.h>
 
-bool __glfwKeyDown = false;
+int __keysDown[KEYS_NUM] = { -1 };
 
-void glfwOnKeyup(GLFWwindow *window, int key, GLFWEventsfun cb) {
-    if (glfwGetKey(window, key) == GLFW_PRESS && __glfwKeyDown == false) {
-        __glfwKeyDown = true;
+bool isKeyDown(int key) {
+    for (int i = 0; i < KEYS_NUM; i++) {
+        if (__keysDown[i] == key) {
+            return true;
+        }
     }
 
-    if (!(glfwGetKey(window, key) == GLFW_PRESS) && __glfwKeyDown == true) {
+    return false;
+}
+
+void setKeyDown(int key) {
+    for (int i = 0; i < KEYS_NUM; i++) {
+        if (__keysDown[i] == -1) {
+            __keysDown[i] = key;
+            return;
+        }
+    }
+}
+
+void setKeyUp(int key) {
+    for (int i = 0; i < KEYS_NUM; i++) {
+        if (__keysDown[i] == key) {
+            __keysDown[i] = -1;
+            return;
+        }
+    }
+}
+
+void glfwOnKeyup(GLFWwindow *window, int key, GLFWEventsfun cb) {
+    if (glfwGetKey(window, key) == GLFW_PRESS && !isKeyDown(key)) {
+        setKeyDown(key);
+    }
+
+    if (!(glfwGetKey(window, key) == GLFW_PRESS) && isKeyDown(key)) {
         cb(window, key);
 
-        __glfwKeyDown = false;
+        setKeyUp(key);
     }
 }
