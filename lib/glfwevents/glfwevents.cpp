@@ -3,7 +3,7 @@
 
 int __keysDown[KEYS_NUM] = { -1 };
 
-bool isKeyDown(int key) {
+bool __isKeyDown(int key) {
     for (int i = 0; i < KEYS_NUM; i++) {
         if (__keysDown[i] == key) {
             return true;
@@ -13,7 +13,7 @@ bool isKeyDown(int key) {
     return false;
 }
 
-void setKeyDown(int key) {
+void __setKeyDown(int key) {
     for (int i = 0; i < KEYS_NUM; i++) {
         if (__keysDown[i] == -1) {
             __keysDown[i] = key;
@@ -22,7 +22,7 @@ void setKeyDown(int key) {
     }
 }
 
-void setKeyUp(int key) {
+void __setKeyUp(int key) {
     for (int i = 0; i < KEYS_NUM; i++) {
         if (__keysDown[i] == key) {
             __keysDown[i] = -1;
@@ -32,13 +32,13 @@ void setKeyUp(int key) {
 }
 
 void glfwOnKeyup(GLFWwindow *window, int key, GLFWEventsfun cb) {
-    if (glfwGetKey(window, key) == GLFW_PRESS && !isKeyDown(key)) {
-        setKeyDown(key);
+    if (glfwGetKey(window, key) == GLFW_PRESS && !__isKeyDown(key)) {
+        __setKeyDown(key);
     }
 
-    if (!(glfwGetKey(window, key) == GLFW_PRESS) && isKeyDown(key)) {
+    if (!(glfwGetKey(window, key) == GLFW_PRESS) && __isKeyDown(key)) {
         cb(window, key);
 
-        setKeyUp(key);
+        __setKeyUp(key);
     }
 }
