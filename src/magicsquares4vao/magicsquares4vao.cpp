@@ -1,20 +1,29 @@
 #include "./../../lib/glad/include/glad/glad.h"
 #include <GLFW/glfw3.h>
 #include "../../lib/glfwevents/glfwevents.hpp"
-
 #include <iostream>
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+struct Square {
+  unsigned int VAO;
+  unsigned int VBO;
+  unsigned int EBO;
+  unsigned int FSP;
+};
+
+int initGL(GLFWwindow *&window);
+void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void onOffWireframe(GLFWwindow *window, int key);
 void processInput(GLFWwindow *window);
-void createSqVao();
-unsigned int getVertexShaderProgram(const char* src);
-unsigned int getFragmentShaderProgram(const char* src, unsigned int vertexShader);
+Square createSquare(float *vertices, unsigned int fragmentShaderProgram);
+unsigned int getVertexShaderProgram(const char *src);
+unsigned int getFragmentShaderProgram(const char *src,
+                                      unsigned int vertexShader);
 void onOffLeftTop(GLFWwindow *window, int key);
 void onOffRightTop(GLFWwindow *window, int key);
 void onOffLeftBottom(GLFWwindow *window, int key);
 void onOffRightBottom(GLFWwindow *window, int key);
-void drawSquare(unsigned int fragShProg, int sqNum, bool enabled);
+void drawSquare(Square square);
+void deleteSquare(Square square);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -31,10 +40,9 @@ const char *vertexShaderSource[1] = {
     "void main()\n"
     "{\n"
     "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-    "}\0"
-};
+    "}\0"};
 
-const char* fragmentShaders[4] = {
+const char *fragmentShaders[4] = {
     "#version 330 core\n"
     "out vec4 FragColor;\n"
     "void main()\n"
@@ -64,304 +72,292 @@ const char* fragmentShaders[4] = {
     "}\n\0",
 };
 
-int main()
-{
-    // glfw: initialize and configure
-    // ------------------------------
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+int main() {
+  GLFWwindow *window;
+  int code = initGL(window);
 
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
+  if (code < 0) {
+    return code;
+  }
 
-    // glfw window creation
-    // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Magic Squares", NULL, NULL);
-    if (window == NULL)
-    {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+  // build and compile our shader program
+  // ------------------------------------
 
-    // glad: load all OpenGL function pointers
-    // ---------------------------------------
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }
+  unsigned int vrtxProgram = getVertexShaderProgram(vertexShaderSource[0]);
+  unsigned int frgProgram0 =
+      getFragmentShaderProgram(fragmentShaders[0], vrtxProgram);
+  unsigned int frgProgram1 =
+      getFragmentShaderProgram(fragmentShaders[1], vrtxProgram);
+  unsigned int frgProgram2 =
+      getFragmentShaderProgram(fragmentShaders[2], vrtxProgram);
+  unsigned int frgProgram3 =
+      getFragmentShaderProgram(fragmentShaders[3], vrtxProgram);
+
+  /*
+
+      (-0.5, 0.5)        (0.5, 0.5)
+  +-----------------+
+  |                 |
+  |                 |
+  |                 |
+  +_________________+ (0.5, -0.5)
+  (-0.5, -0.5)
 
 
-    // build and compile our shader program
-    // ------------------------------------
 
-    unsigned int vrtxProgram = getVertexShaderProgram(vertexShaderSource[0]);
-    unsigned int frgProgram0 = getFragmentShaderProgram(fragmentShaders[0], vrtxProgram);
-    unsigned int frgProgram1 = getFragmentShaderProgram(fragmentShaders[1], vrtxProgram);
-    unsigned int frgProgram2 = getFragmentShaderProgram(fragmentShaders[2], vrtxProgram);
-    unsigned int frgProgram3 = getFragmentShaderProgram(fragmentShaders[3], vrtxProgram);
+  (-0.5, 0.5) (-0.25, 0.5)          (0.25, 0.5) (0.5, 0.5)
+  (-0.5, 0.25) (-0.25, 0.5)         (0.25, 0.25) (0.5, 0.25)
 
-    /*
 
-        (-0.5, 0.5)        (0.5, 0.5)
-    +-----------------+
-    |                 |  
-    |                 |
-    |                 |
-    +_________________+ (0.5, -0.5)           
-    (-0.5, -0.5)
+  (-0.5, -0.25) (-0.25, -0.25)      (0.25, -0.25) (0.5, -0.25)
+  (-0.5, -0.5) (-0.25, -0.5)        (0.25, -0.5) (0.5, -0.5)
+
+  */
+
+  // set up vertex data (and buffer(s)) and configure vertex attributes
+  // ------------------------------------------------------------------
+  float vertices0[] = {
+      -0.5f,  0.5f,  0.0f, // (top-left sq) top-left
+      -0.25f, 0.5f,  0.0f, // (top-left sq) top-right
+      -0.5f,  0.25f, 0.0f, // (top-left sq) bottom-left
+      -0.25f, 0.25f, 0.0f, // (top-left sq) bottom-right
+  };
+
+  float vertices1[] = {
+      0.25f, 0.5f,  0.0f, // (top-right sq) top-left
+      0.5f,  0.5f,  0.0f, // (top-right sq) top-right
+      0.25f, 0.25f, 0.0f, // (top-right sq) bottom-left
+      0.5f,  0.25f, 0.0f, // (top-right sq) bottom-right
+  };
+
+  float vertices2[] = {
+      -0.5f,  -0.25f, 0.0f, // (bottom-left sq) top-left
+      -0.25f, -0.25f, 0.0f, // (bottom-left sq) top-right
+      -0.5f,  -0.5f,  0.0f, // (bottom-left sq) bottom-left
+      -0.25f, -0.5f,  0.0f, // (bottom-left sq) bottom-right
+  };
+
+  float vertices3[] = {
+      0.25f, -0.25f, 0.0f, // (bottom-right sq) top-left
+      0.5f,  -0.25f, 0.0f, // (bottom-right sq) top-right
+      0.25f, -0.5f,  0.0f, // (bottom-right sq) bottom-left
+      0.5f,  -0.5f,  0.0f, // (bottom-right sq) bottom-right
+  };
+
+  Square sq0 = createSquare(vertices0, frgProgram0);
+  Square sq1 = createSquare(vertices1, frgProgram1);
+  Square sq2 = createSquare(vertices2, frgProgram2);
+  Square sq3 = createSquare(vertices3, frgProgram3);
+
+  // render loop
+  // -----------
+  while (!glfwWindowShouldClose(window)) {
+    processInput(window);
     
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
 
+    if (IS_0) drawSquare(sq0);
+    if (IS_1) drawSquare(sq1);
+    if (IS_2) drawSquare(sq2);
+    if (IS_3) drawSquare(sq3);
 
-    (-0.5, 0.5) (-0.25, 0.5)          (0.25, 0.5) (0.5, 0.5)
-    (-0.5, 0.25) (-0.25, 0.5)         (0.25, 0.25) (0.5, 0.25)
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+  }
 
+  // optional: de-allocate all resources once they've outlived their purpose:
+  // ------------------------------------------------------------------------
 
-    (-0.5, -0.25) (-0.25, -0.25)      (0.25, -0.25) (0.5, -0.25)
-    (-0.5, -0.5) (-0.25, -0.5)        (0.25, -0.5) (0.5, -0.5)
+  deleteSquare(sq0);
+  deleteSquare(sq1);
+  deleteSquare(sq2);
+  deleteSquare(sq3);
 
-    */
-
-
-    // set up vertex data (and buffer(s)) and configure vertex attributes
-    // ------------------------------------------------------------------
-    float vertices[] = {
-        -0.5f, 0.5f, 0.0f, // (top-left sq) top-left
-        -0.25f, 0.5f, 0.0f,  // (top-left sq) top-right
-        -0.5f, 0.25f, 0.0f, // (top-left sq) bottom-left
-        -0.25f, 0.25f, 0.0f,   // (top-left sq) bottom-right
-
-        0.25f, 0.5f, 0.0f, // (top-right sq) top-left
-        0.5f, 0.5f, 0.0f, // (top-right sq) top-right
-        0.25f, 0.25f, 0.0f, // (top-right sq) bottom-left
-        0.5f, 0.25f, 0.0f, // (top-right sq) bottom-right
-
-        -0.5f, -0.25f, 0.0f, // (bottom-left sq) top-left
-        -0.25f, -0.25f, 0.0f, // (bottom-left sq) top-right
-        -0.5f, -0.5f, 0.0f, // (bottom-left sq) bottom-left
-        -0.25f, -0.5f, 0.0f, // (bottom-left sq) bottom-right
-
-        0.25f, -0.25f, 0.0f, // (bottom-right sq) top-left
-        0.5f, -0.25f, 0.0f, // (bottom-right sq) top-right
-        0.25f, -0.5f, 0.0f, // (bottom-right sq) bottom-left
-        0.5f, -0.5f, 0.0f, // (bottom-right sq) bottom-right
-    }; 
-
-    unsigned int indices[] = { 
-        0, 1, 2,   // first triangle
-        1, 2, 3,    // second triangle
-
-        4, 5, 6,   // first triangle
-        5, 6, 7,    // second triangle
-
-        8, 9, 10,   // first triangle
-        9, 10, 11,    // second triangle
-
-        12, 13, 14,   // first triangle
-        13, 14, 15    // second triangle
-    };
-
-    // uncomment this call to draw in wireframe polygons.
-    //
-
-    // render loop
-    // -----------
-    while (!glfwWindowShouldClose(window))
-    {
-        // input
-        // -----
-        processInput(window);
-
-        // render
-        // ------
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-
-        drawSquare(frgProgram0, 0, IS_0);
-        drawSquare(frgProgram1, 1, IS_1);
-        drawSquare(frgProgram2, 2, IS_2);
-        drawSquare(frgProgram3, 3, IS_3);
-
-        glBindVertexArray(0);
-        // glBindVertexArray(0); // no need to unbind it every time 
- 
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
-
-    // optional: de-allocate all resources once they've outlived their purpose:
-    // ------------------------------------------------------------------------
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
-    glDeleteProgram(frgProgram0);
-    glDeleteProgram(frgProgram1);
-    glDeleteProgram(frgProgram2);
-    glDeleteProgram(frgProgram3);
-
-    // glfw: terminate, clearing all previously allocated GLFW resources.
-    // ------------------------------------------------------------------
-    glfwTerminate();
-    return 0;
+  // glfw: terminate, clearing all previously allocated GLFW resources.
+  // ------------------------------------------------------------------
+  glfwTerminate();
+  return 0;
 }
 
-// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
+int initGL(GLFWwindow *&window) {
+  // glfw: initialize and configure
+  // ------------------------------
+  glfwInit();
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+#ifdef __APPLE__
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+
+  // glfw window creation
+  // --------------------
+  window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Magic Squares", NULL, NULL);
+
+  if (window == NULL) {
+    std::cout << "Failed to create GLFW window" << std::endl;
+    glfwTerminate();
+    return -1;
+  }
+  glfwMakeContextCurrent(window);
+  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+  // glad: load all OpenGL function pointers
+  // ---------------------------------------
+  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    std::cout << "Failed to initialize GLAD" << std::endl;
+    return -1;
+  }
+
+  return 0;
+}
+
+// process all input: query GLFW whether relevant keys are pressed/released this
+// frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow *window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
+void processInput(GLFWwindow *window) {
+  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    glfwSetWindowShouldClose(window, true);
 
-
-    glfwOnKeyup(window, GLFW_KEY_W, onOffWireframe);
-    glfwOnKeyup(window, GLFW_KEY_1, onOffLeftTop);
-    glfwOnKeyup(window, GLFW_KEY_2, onOffRightTop);
-    glfwOnKeyup(window, GLFW_KEY_3, onOffLeftBottom);
-    glfwOnKeyup(window, GLFW_KEY_4, onOffRightBottom);
+  glfwOnKeyup(window, GLFW_KEY_W, onOffWireframe);
+  glfwOnKeyup(window, GLFW_KEY_1, onOffLeftTop);
+  glfwOnKeyup(window, GLFW_KEY_2, onOffRightTop);
+  glfwOnKeyup(window, GLFW_KEY_3, onOffLeftBottom);
+  glfwOnKeyup(window, GLFW_KEY_4, onOffRightBottom);
 }
 
 void onOffWireframe(GLFWwindow *window, int key) {
-    IS_WIREFRAME = !IS_WIREFRAME;
+  IS_WIREFRAME = !IS_WIREFRAME;
 
-    if (IS_WIREFRAME) {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    } else {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    }
+  if (IS_WIREFRAME) {
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  } else {
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  }
 }
 
-void onOffLeftTop(GLFWwindow *window, int key) {
-    IS_0 = !IS_0;
-}
+void onOffLeftTop(GLFWwindow *window, int key) { IS_0 = !IS_0; }
 
-void onOffRightTop(GLFWwindow *window, int key) {
-    IS_1 = !IS_1;
-}
+void onOffRightTop(GLFWwindow *window, int key) { IS_1 = !IS_1; }
 
-void onOffLeftBottom(GLFWwindow *window, int key) {
-    IS_2 = !IS_2;
-}
+void onOffLeftBottom(GLFWwindow *window, int key) { IS_2 = !IS_2; }
 
-void onOffRightBottom(GLFWwindow *window, int key) {
-    IS_3 = !IS_3;
-}
+void onOffRightBottom(GLFWwindow *window, int key) { IS_3 = !IS_3; }
 
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
+// glfw: whenever the window size changed (by OS or user resize) this callback
+// function executes
 // ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    // make sure the viewport matches the new window dimensions; note that width and 
-    // height will be significantly larger than specified on retina displays.
-    glViewport(0, 0, width, height);
+void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+  // make sure the viewport matches the new window dimensions; note that width
+  // and height will be significantly larger than specified on retina displays.
+  glViewport(0, 0, width, height);
 }
 
-unsigned int getVertexShaderProgram(const char* src) {
-    // vertex shader
-    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &src, NULL);
-    glCompileShader(vertexShader);
-    // check for shader compile errors
-    int success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
+unsigned int getVertexShaderProgram(const char *src) {
+  // vertex shader
+  unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+  glShaderSource(vertexShader, 1, &src, NULL);
+  glCompileShader(vertexShader);
+  // check for shader compile errors
+  int success;
+  char infoLog[512];
+  glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+  if (!success) {
+    glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+    std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n"
+              << infoLog << std::endl;
+  }
 
-    return vertexShader;
+  return vertexShader;
 }
 
-unsigned int getFragmentShaderProgram(const char* src, unsigned int vertexShader) {
-    int success;
-    char infoLog[512];
+unsigned int getFragmentShaderProgram(const char *src,
+                                      unsigned int vertexShader) {
+  int success;
+  char infoLog[512];
 
-    // fragment shader
-    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &src, NULL);
-    glCompileShader(fragmentShader);
-    // check for shader compile errors
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-    // link shaders
-    unsigned int shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    // check for linking errors
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-    }
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+  // fragment shader
+  unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+  glShaderSource(fragmentShader, 1, &src, NULL);
+  glCompileShader(fragmentShader);
+  // check for shader compile errors
+  glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+  if (!success) {
+    glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+    std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n"
+              << infoLog << std::endl;
+  }
+  // link shaders
+  unsigned int shaderProgram = glCreateProgram();
+  glAttachShader(shaderProgram, vertexShader);
+  glAttachShader(shaderProgram, fragmentShader);
+  glLinkProgram(shaderProgram);
+  // check for linking errors
+  glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+  if (!success) {
+    glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+    std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n"
+              << infoLog << std::endl;
+  }
+  glDeleteShader(vertexShader);
+  glDeleteShader(fragmentShader);
 
-    return shaderProgram;
+  return shaderProgram;
 }
 
-void drawSquare(unsigned int fragShProg, int sqNum, bool enabled) {
-    if (!enabled) return;
-
-    glUseProgram(fragShProg);
-
-    switch (sqNum) {
-        case 0:
-            glDrawElementsBaseVertex(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, 0);
-        break;
-        case 1:
-            glDrawElementsBaseVertex(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, 4);
-        break;
-        case 2:
-            glDrawElementsBaseVertex(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, 8);
-        break;
-        case 3:
-            glDrawElementsBaseVertex(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, 12);
-        break;
-    }
-    
+void drawSquare(Square square) {
+  glUseProgram(square.FSP);
+  glBindVertexArray(square.VAO);
+  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+  glBindVertexArray(0);
 }
 
-void createSqVao(int* vertices) {
-    int indices[] = {
-        0, 1, 2,   // first triangle
-        1, 2, 3,    // second triangle
-    };
-    
-    unsigned int VBO, VAO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-    glBindVertexArray(VAO);
+Square createSquare(float *vertices, unsigned int fragmentShaderProgram) {
+  int indices[] = {
+      0, 1, 2, // first triangle
+      1, 2, 3, // second triangle
+  };
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW); 
+  struct Square sq;
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+  sq.FSP = fragmentShaderProgram;
 
-    // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
+  glGenVertexArrays(1, &(sq.VAO));
+  glGenBuffers(1, &(sq.VBO));
+  glGenBuffers(1, &(sq.EBO));
+  // bind the Vertex Array Object first, then bind and set vertex buffer(s), and
+  // then configure vertex attributes(s).
+  glBindVertexArray(sq.VAO);
 
-    // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
-    // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
-    glBindVertexArray(0); 
+  std::cout << sq.VBO << std::endl;
+
+  glBindBuffer(GL_ARRAY_BUFFER, sq.VBO);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sq.EBO);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+  glEnableVertexAttribArray(0);
+
+  // note that this is allowed, the call to glVertexAttribPointer registered VBO
+  // as the vertex attribute's bound vertex buffer object so afterwards we can
+  // safely unbind
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  // You can unbind the VAO afterwards so other VAO calls won't accidentally
+  // modify this VAO, but this rarely happens. Modifying other VAOs requires a
+  // call to glBindVertexArray anyways so we generally don't unbind VAOs (nor
+  // VBOs) when it's not directly necessary.
+  glBindVertexArray(0);
+
+  return sq;
+}
+
+void deleteSquare(Square square) {
+  glDeleteVertexArrays(1, &square.VAO);
+  glDeleteBuffers(1, &square.VBO);
+  glDeleteBuffers(1, &square.EBO);
+  glDeleteProgram(square.FSP);
 }
