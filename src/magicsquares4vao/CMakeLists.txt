@@ -1,15 +1,15 @@
-add_executable(magic_squares 
+add_executable(magicsquares4vao 
     magicsquares4vao.cpp 
     ../glad.c 
     ../../lib/glfwevents/glfwevents.cpp
 )
 
-target_include_directories(magic_squares PRIVATE 
+target_include_directories(magicsquares4vao PRIVATE 
     .. 
     ../../lib/glfwevents
 )
 
-target_link_libraries(magic_squares PRIVATE 
+target_link_libraries(magicsquares4vao PRIVATE 
     glfw 
     ${CMAKE_DL_LIBS}
 )
