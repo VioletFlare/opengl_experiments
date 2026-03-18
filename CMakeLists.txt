@@ -11,3 +11,4 @@ find_package(glfw3 REQUIRED)
 
 add_subdirectory(src/magicsquares)
 add_subdirectory(src/magicsquares4vao)
+add_subdirectory(src/magicsquaresparametrized)
