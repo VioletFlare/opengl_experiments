@@ -2,6 +2,7 @@ add_executable(shaderclasstriangle
     shaderclasstriangle.cpp 
     ../glad.c 
     ../../lib/glfwevents/glfwevents.cpp
+    ../../lib/shaderloader/shader.cpp
     #../../lib/glcheckerror/glcheckerror.cpp
 )
 
@@ -14,5 +15,6 @@ target_include_directories(shaderclasstriangle PRIVATE
     .. 
     ../../lib/glfwevents
     #../../lib/glcheckerror
+    ../../lib/shaderloader
 )
 

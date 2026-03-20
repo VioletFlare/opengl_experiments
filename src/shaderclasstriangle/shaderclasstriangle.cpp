@@ -1,4 +1,5 @@
 #include "./../../lib/glad/include/glad/glad.h"
+#include "./../../lib/shaderloader/shader.hpp"
 #include <GLFW/glfw3.h>
 
 #include <iostream>
@@ -6,7 +7,7 @@
 struct Triangle {
   unsigned int VBO;
   unsigned int EBO;
-  unsigned int FSP;
+  Shader shader;
 };
 
 struct DrawingContext {
@@ -19,7 +20,7 @@ int initGL(GLFWwindow *&window);
 unsigned int getVertexShaderProgram(const char *src);
 unsigned int getFragmentShaderProgram(const char *src,
                                       unsigned int vertexShader);
-Triangle createTriangle(float *vertices, unsigned int fragmentShaderProgram);
+Triangle createTriangle(float *vertices, Shader shader);
 void drawTriangle(Triangle triangle);
 void deleteTriangle(Triangle triangle);
 
@@ -27,22 +28,7 @@ void deleteTriangle(Triangle triangle);
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-const char *vertexShaderSource[1] = {"#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
-    "void main()\n"
-    "{\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-    "}\0"
-};
-
-const char *fragmentShaderSource[1] = {
- "#version 330 core\n"
-        "out vec4 FragColor;\n"
-        "void main()\n"
-        "{\n"
-        "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-        "}\n\0"
-};
+Shader ourShader("3.3.shader.vs", "3.3.shader.fs");
 
 int main()
 {
@@ -53,10 +39,6 @@ int main()
         return code;
     }
 
-    unsigned int vrtxProgram = getVertexShaderProgram(vertexShaderSource[0]);
-    unsigned int frgProgram0 =
-      getFragmentShaderProgram(fragmentShaderSource[0], vrtxProgram);
-
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
     float vertices[] = {
@@ -65,10 +47,16 @@ int main()
          0.0f,  0.5f, 0.0f  // top   
     }; 
 
+    glGenVertexArrays(1, &ctx.VAO);
+    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+    glBindVertexArray(ctx.VAO);
+
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    Triangle tr0 = createTriangle(vertices, frgProgram0);
+    Shader shader("shader.vs", "shader.fs");
+
+    Triangle tr0 = createTriangle(vertices, shader);
 
     // render loop
     // -----------
@@ -205,15 +193,12 @@ unsigned int getFragmentShaderProgram(const char *src,
   return shaderProgram;
 }
 
-Triangle createTriangle(float *vertices, unsigned int fragmentShaderProgram) {
+Triangle createTriangle(float *vertices, Shader shader) {
     Triangle tr;
 
-    tr.FSP = fragmentShaderProgram;
+    tr.shader = shader;
 
-    glGenVertexArrays(1, &ctx.VAO);
     glGenBuffers(1, &tr.VBO);
-    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-    glBindVertexArray(ctx.VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, tr.VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 9, vertices, GL_STATIC_DRAW);
@@ -233,7 +218,7 @@ Triangle createTriangle(float *vertices, unsigned int fragmentShaderProgram) {
 
 void drawTriangle(Triangle triangle) {
     // draw our first triangle
-    glUseProgram(triangle.FSP);
+    triangle.shader.use();
     glBindVertexArray(ctx.VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glBindVertexArray(0);
@@ -241,5 +226,5 @@ void drawTriangle(Triangle triangle) {
 
 void deleteTriangle(Triangle triangle) {
     glDeleteBuffers(1, &(triangle.VBO));
-    glDeleteProgram(triangle.FSP);
+    triangle.shader.del();
 }
