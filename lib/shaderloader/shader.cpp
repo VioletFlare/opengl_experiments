@@ -1,6 +1,7 @@
 #include "shader.hpp"
 #include <cstddef>
 #include <fstream>
+#include <ios>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -20,8 +21,8 @@ Shader::Shader(const char *vertexPath, const char *fragmentPath) {
   fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
   try {
     // open files
-    vShaderFile.open(vertexPath);
-    fShaderFile.open(fragmentPath);
+    vShaderFile.open(vertexPath, std::ios_base::in);
+    fShaderFile.open(fragmentPath, std::ios_base::in);
     std::stringstream vShaderStream, fShaderStream;
     // read file's buffer contents into streams
     vShaderStream << vShaderFile.rdbuf();

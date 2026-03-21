@@ -28,7 +28,7 @@ void deleteTriangle(Triangle triangle);
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-Shader ourShader("3.3.shader.vs", "3.3.shader.fs");
+Shader ourShader("./src/shaderclasstriangle/shader.vs\0", "./src/shaderclasstriangle/shader.fs\0");
 
 int main()
 {
