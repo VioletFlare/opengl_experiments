@@ -28,8 +28,6 @@ void deleteTriangle(Triangle triangle);
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-Shader ourShader("./src/shaderclasstriangle/shader.vs\0", "./src/shaderclasstriangle/shader.fs\0");
-
 int main()
 {
     GLFWwindow *window;
@@ -54,7 +52,7 @@ int main()
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    Shader shader("shader.vs", "shader.fs");
+    Shader shader("./src/shaderclasstriangle/shader.vs\0", "./src/shaderclasstriangle/shader.fs\0");
 
     Triangle tr0 = createTriangle(vertices, shader);
 
