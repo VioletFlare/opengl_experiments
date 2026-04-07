@@ -8,7 +8,7 @@
             "name": "Launch",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceRoot}/bin/shaderclasstriangle",
+            "program": "${workspaceRoot}/bin/texturetriangle",
             "preLaunchTask": "Build Dev",
             "args": [],
             "cwd": "${workspaceRoot}"
