@@ -43,14 +43,16 @@ int main()
     // ------------------------------------------------------------------
     float vertices[] = {
         -0.5f, -0.5f, 0.0f, // left  
-        0.0f, 0.5f, 0.0f, 1.0f,
-        0.0f, 0.0f,
-         0.5f, -0.5f, 0.0f, // right 
-         1.0f, 0.0f, 
-         0.0f, 0.5f, 0.0f, 1.0f,
-         0.0f,  0.5f, 0.0f,  // top   
-         0.0f, 0.5f, 0.0f, 1.0f,
-         0.5f, 1.0f //texture
+        0.0f, 0.5f, 0.0f, 1.0f, //color
+        -0.5f, -0.5f, //tex
+
+        0.5f, -0.5f, 0.0f, // right 
+        0.0f, 0.5f, 0.0f, 1.0f, //color
+        0.5f, -0.5f, //tex
+
+        0.0f,  0.5f, 0.0f,  // top   
+        0.0f, 0.5f, 0.0f, 1.0f, //color
+        0.0f,  0.5f //tex
     }; 
 
     glGenVertexArrays(1, &ctx.VAO);
@@ -213,7 +215,7 @@ Triangle createTriangle(float *vertices, Shader shader, Texture texture) {
     glGenBuffers(1, &tr.VBO);
 
     glBindBuffer(GL_ARRAY_BUFFER, tr.VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 21, vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 26, vertices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)0);
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*) (3 * sizeof(float)));
