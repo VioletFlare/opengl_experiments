@@ -8,7 +8,7 @@
             "name": "Launch",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceRoot}/bin/texturetriangle",
+            "program": "${workspaceRoot}/bin/texturesquare",
             "preLaunchTask": "Build Dev",
             "args": [],
             "cwd": "${workspaceRoot}"
