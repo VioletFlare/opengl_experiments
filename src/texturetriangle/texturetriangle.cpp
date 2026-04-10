@@ -44,15 +44,15 @@ int main()
     float vertices[] = {
         -0.5f, -0.5f, 0.0f, // left  
         0.0f, 0.5f, 0.0f, 1.0f, //color
-        -0.5f, -0.5f, //tex
+        1.0f, 1.0f, //tex
 
         0.5f, -0.5f, 0.0f, // right 
         0.0f, 0.5f, 0.0f, 1.0f, //color
-        0.5f, -0.5f, //tex
+        0.0f, 1.0f, //tex
 
         0.0f,  0.5f, 0.0f,  // top   
         0.0f, 0.5f, 0.0f, 1.0f, //color
-        0.0f,  0.5f //tex
+        0.0f,  0.0f //tex
     }; 
 
     glGenVertexArrays(1, &ctx.VAO);
